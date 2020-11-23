@@ -8,7 +8,7 @@ This tool is just meant to provide automatic updates. For a real management solu
 
 ## Usage
 
-You can run build the binary yourself using `go build` or use the provided Docker image.
+You can run build the binary yourself using `go build` or use the provided [Docker image](https://hub.docker.com/repository/docker/merlinschumacher/tasmogo).
 
 To configure tasmogos behaviour set the following environment variables:
 
