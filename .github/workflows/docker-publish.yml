@@ -55,6 +55,7 @@ jobs:
           tags: |
             merlinschumacher/tasmogo:latest
             ghcr.io/merlinschumacher/tasmogo:latest
+            docker.pkg.github.com/merlinschumacher/tasmogo:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
       -
