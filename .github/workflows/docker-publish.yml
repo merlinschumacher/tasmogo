@@ -38,13 +38,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHTOKEN }}
           registry: ghcr.io
-      -
-        name: Login to GitHub Packages Docker Registry
-        uses: docker/login-action@v1
-        with:
-          registry: docker.pkg.github.com
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
@@ -55,7 +48,6 @@ jobs:
           tags: |
             merlinschumacher/tasmogo:latest
             ghcr.io/merlinschumacher/tasmogo:latest
-            docker.pkg.github.com/merlinschumacher/tasmogo:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
       -
