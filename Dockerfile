@@ -3,6 +3,8 @@ FROM golang:alpine as builder
 RUN apk update && apk add --no-cache git ca-certificates && update-ca-certificates
 WORKDIR /
 
+LABEL org.opencontainers.image.source https://github.com/merlinschumacher/tasmogo
+
 COPY go.mod .
 COPY go.sum .
 
