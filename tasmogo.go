@@ -41,7 +41,7 @@ type tasmoDevice struct {
 	IP              net.IP
 }
 
-// ip2int converts a given IP of type net.IP to an tnteger.
+// ip2int converts a given IP of type net.IP to an integer.
 func ip2int(ip net.IP) uint32 {
 	if len(ip) == 16 {
 		return binary.BigEndian.Uint32(ip[12:16])
@@ -50,8 +50,7 @@ func ip2int(ip net.IP) uint32 {
 }
 
 // getPasswordQuery checks if a login password was given and returns the needed URL query part
-func getPasswordQuery() string {
-	password := viper.GetString("password")
+func getPasswordQuery(password string) string {
 	auth := ""
 	if password != "" {
 		auth = "user=admin&password=" + password + "&"
@@ -128,16 +127,13 @@ func scanNetwork() []tasmoDevice {
 	return foundDevices
 }
 
-func buildDeviceURL(hostname string) string {
-	auth := getPasswordQuery()
+func buildDeviceURL(hostname string, password string) string {
+	auth := getPasswordQuery(password)
 	return "http://" + hostname + "/cm?" + auth + "cmnd=Status%200"
 }
 
 func parseFirmwareVersion(v string) (string, string, error) {
-	re, err := regexp.Compile(`(\d*\.\d*\.\d*)\((.*)\)`)
-	if err != nil {
-		return "", "", errors.New("Regex parser failed")
-	}
+	re, _ := regexp.Compile(`(.*)\((.*)\)`)
 	res := re.FindAllStringSubmatch(v, 1)
 	if len(res) != 1 {
 		return "", "", errors.New("Regex parser failed\n" + v)
@@ -148,12 +144,16 @@ func parseFirmwareVersion(v string) (string, string, error) {
 // getDeviceData loads the data from a given device ip
 func getDeviceData(ip net.IP) (tasmoDevice, error) {
 	var device tasmoDevice
+	password := viper.GetString("password")
 	// build the URL for our device request
-	data, _ := getURL(buildDeviceURL(ip.String()))
+	data, _ := getURL(buildDeviceURL(ip.String(), password))
 
 	// Extract the firmware version
 	fw := gjson.Get(data, "StatusFWR.Version").String()
-	version, variant, _ := parseFirmwareVersion(fw)
+	version, variant, err := parseFirmwareVersion(fw)
+	if err != nil {
+		return device, errors.New("Incompatible device")
+	}
 	// Extract the split version and type
 	device.IP = ip
 	device.FirmwareVersion = version
@@ -171,7 +171,6 @@ func getURL(url string) (string, error) {
 
 	res, err := client.Do(req)
 	if err != nil {
-		log.Println(err)
 		return "", errors.New("JSON download failed")
 	}
 
@@ -183,8 +182,8 @@ func getURL(url string) (string, error) {
 }
 
 // getCurrentTasmotaVersion loads the current version of tasmota with help of latest
-func getCurrentTasmotaVersion() *version.Version {
-	res, err := latest.Check(versionData, "0.1.0")
+func getCurrentTasmotaVersion(v *latest.GithubTag) *version.Version {
+	res, err := latest.Check(v, "0.1.0")
 
 	if err != nil {
 		log.Fatal("FATAL: Getting current Tasmota version failed.\n" + err.Error())
@@ -194,22 +193,21 @@ func getCurrentTasmotaVersion() *version.Version {
 }
 
 // checkDeviceVersion compares two version strings to evaluate if an update is needed.
-func checkDeviceVersion(v *version.Version, device tasmoDevice) tasmoDevice {
-	deviceVersion, err := version.NewVersion(device.FirmwareVersion)
-	if err != nil {
-		log.Println("ERROR: Getting Tasmota version from device failed.\n" + err.Error() + "\n" + device.IP.String())
+func checkDeviceVersion(v *version.Version, device tasmoDevice) (tasmoDevice, error) {
+	deviceVersion, _ := version.NewVersion(device.FirmwareVersion)
+	if deviceVersion == nil {
+		return device, errors.New("Version could not be determined")
 	}
 	if deviceVersion.LessThan(v) {
 		device.Outdated = true
 	}
-	return device
+	return device, nil
 }
 
-// printDeviceTable generates and prints a table of all found devices and their status.
-func printDeviceTable(devices []tasmoDevice) {
+// renderDeviceTable generates a table of all found devices and their status.
+func renderDeviceTable(devices []tasmoDevice) string {
 	// create a table output
 	t := table.NewWriter()
-	t.SetOutputMirror(log.Writer())
 	// set a custom style
 	t.SetStyle(table.Style{
 		Name: "myNewStyle",
@@ -250,13 +248,14 @@ func printDeviceTable(devices []tasmoDevice) {
 	}
 	// print the table
 	log.Println("Scan results:")
-	t.Render()
+	return t.Render()
 }
 
 // updateDevices sets the OTA url of the devices and triggers an OTA update
 func updateDevices(devices []tasmoDevice) {
 	otaBaseURL := viper.GetString("otaurl")
-	auth := getPasswordQuery()
+	password := viper.GetString("password")
+	auth := getPasswordQuery(password)
 
 	// append tasmota to the url as files should be in the scheme "tasmota-sensors.bin"
 	otaBaseURL = otaBaseURL + "tasmota"
@@ -282,7 +281,7 @@ func updateDevices(devices []tasmoDevice) {
 
 // scanAndUpdate searches the given IP range for tasmota devices and triggers an update if enabled
 func scanAndUpdate() {
-	currentVersion := getCurrentTasmotaVersion()
+	currentVersion := getCurrentTasmotaVersion(versionData)
 	knownDevices := scanNetwork()
 
 	// sort the devices by their IP address because of the parallelized run of the scan they come in a random manner
@@ -292,11 +291,15 @@ func scanAndUpdate() {
 
 	// check if the devices need an update
 	for i, device := range knownDevices {
-		knownDevices[i] = checkDeviceVersion(currentVersion, device)
+		dev, err := checkDeviceVersion(currentVersion, device)
+		if err != nil {
+			continue
+		}
+		knownDevices[i] = dev
 	}
 
 	// show all devices
-	printDeviceTable(knownDevices)
+	log.Println(renderDeviceTable(knownDevices))
 
 	// if we're supposed to du updates, do them
 	if viper.GetBool("doupdates") {
