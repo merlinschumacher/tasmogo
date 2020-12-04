@@ -18,6 +18,6 @@ To configure tasmogos behaviour set the following environment variables:
 
 `TASMOGO_OTAURL` – Set the URL from where the updates are pulled (`http://ota.tasmota.com/tasmota/release/`)
 
-`TASMOGO_PASSWORD` – Define a password for the WebUI. If not set, no authentication is used.
+`TASMOGO_PASSWORD` – Define a password for the devices WebUI, if not set, no authentication is used. (``)
 
-`TASMOGO_DAEMON` – Start tasmogo as a daemon that checks for updates at midnight.
+`TASMOGO_DAEMON` – Start tasmogo as a daemon that checks for updates every 24h. (`false`)
