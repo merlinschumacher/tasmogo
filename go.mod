@@ -10,6 +10,6 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
 	github.com/tcnksm/go-latest v0.0.0-20170313132115-e3007ae9052e
-	github.com/tidwall/gjson v1.9.3
+	github.com/tidwall/gjson v1.17.0
 	golang.org/x/net v0.17.0 // indirect
 )
