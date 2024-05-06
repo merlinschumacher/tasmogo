@@ -10,5 +10,5 @@ require (
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
 	github.com/tcnksm/go-latest v0.0.0-20170313132115-e3007ae9052e
-	github.com/tidwall/gjson v1.17.0
+	github.com/tidwall/gjson v1.17.1
 )
